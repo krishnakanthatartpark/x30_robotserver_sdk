@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(robotserver_sdk VERSION 0.1.0 LANGUAGES CXX)
+project(x30_robotserver_sdk VERSION 0.1.0 LANGUAGES CXX)
 
 # 设置C++标准
 set(CMAKE_CXX_STANDARD 17)
@@ -21,6 +21,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(Boost 1.66 REQUIRED COMPONENTS system thread)
 find_package(nlohmann_json REQUIRED)
 find_package(RapidXML QUIET)
+find_package(ament_cmake REQUIRED)
 
 # 如果没有找到RapidXML，则使用内部提供的版本
 if(NOT RapidXML_FOUND)
@@ -51,6 +52,23 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     PUBLIC_HEADER "include/robotserver_sdk.h;include/types.h"
 )
 
+# Properly set include directories for build + install interfaces
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+# Create an INTERFACE target for downstream ROS 2 packages
+# add_library(x30_robotserver_sdk::x30_robotserver_sdk INTERFACE IMPORTED)
+
+# Specify include directories and link libraries for downstream usage
+# set_target_properties(x30_robotserver_sdk::x30_robotserver_sdk PROPERTIES
+#     INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:include>"
+#     INTERFACE_LINK_LIBRARIES "${Boost_LIBRARIES};nlohmann_json::nlohmann_json"
+# )
+
+
 # 链接依赖库
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
@@ -59,17 +77,28 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # 安装目标
+# Install the shared library and export targets
 install(TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}Targets
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
-    PUBLIC_HEADER DESTINATION include
+    PUBLIC_HEADER DESTINATION include/x30_robotserver_sdk
 )
 
-# 安装头文件
+# Export CMake targets for downstream find_package()
+install(EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE x30_robotserver_sdk::
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Install headers (entire include tree)
 install(DIRECTORY include/
     DESTINATION include
 )
+
+
 
 # 添加示例子目录
 add_subdirectory(examples)
@@ -122,3 +151,5 @@ message(STATUS "  C++ Compiler:      ${CMAKE_CXX_COMPILER}")
 message(STATUS "  C++ flags:         ${CMAKE_CXX_FLAGS}")
 message(STATUS "  Boost version:     ${Boost_VERSION}")
 message(STATUS "")
+
+ament_package()

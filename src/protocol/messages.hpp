@@ -188,6 +188,108 @@ public:
 };
 
 /**
+ * @brief Motion control request message (ASDU Type 2)
+ *
+ * This class constructs a motion control request XML message for controlling
+ * robot motion commands such as forward, backward, turn, stop, or gait switch.
+ */
+class MotionControlRequest : public MessageBase {
+public:
+    int command = 1;      ///< Motion command ID (1=forward, 2=backward, 3=turn left, 4=turn right, 6=stop, 11=left, 12=right, 20=gait switch, etc.)
+    float value = -1.0f;  ///< Value associated with the command (velocity in m/s or rad/s, or gait type)
+
+    std::string timestamp;
+
+    MotionControlRequest() : timestamp(getCurrentTimestamp()) {}
+
+    /**
+     * @brief Returns the message type
+     */
+    MessageType getType() const override {
+        return MessageType::MOTION_CONTROL_REQ;
+    }
+
+    /**
+     * @brief Serialize the motion control request into XML
+     */
+    std::string serialize() const override {
+        std::ostringstream ss;
+
+        ss << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+        ss << "<PatrolDevice>\n";
+        ss << "  <Type>2</Type>\n";       // ASDU Type 2 = Motion Control
+        ss << "  <Command>" << command << "</Command>\n";
+        ss << "  <Time>" << timestamp << "</Time>\n";
+        ss << "  <Items>\n";
+        ss << "    <Value>" << value << "</Value>\n";
+        ss << "  </Items>\n";
+        ss << "</PatrolDevice>\n"; 
+
+        return ss.str();
+    }
+
+    bool deserialize(const std::string&) override {
+        // Request does not require deserialization
+        return false;
+    }
+
+};
+
+/**
+ * @brief Motion control response message
+ *
+ * This class parses the response XML sent by the robot after executing
+ * a motion control command. Contains velocity value and error code.
+ */
+class MotionControlResponse : public MessageBase {
+public:
+    float value = 0.0f;              ///< Velocity value reported by the robot
+    int errorCode = 0;                ///< Execution result: 0=success, 1=failure
+
+    MotionControlResponse() = default;
+
+    MessageType getType() const override {
+        return MessageType::MOTION_CONTROL_RESP;
+    }
+
+    std::string serialize() const override {
+        // SDK does not serialize response
+        return "";
+    }
+
+    bool deserialize(const std::string& data) override {
+        try {
+            rapidxml::xml_document<> doc;
+            std::vector<char> buffer(data.begin(), data.end());
+            buffer.push_back('\0');
+            doc.parse<rapidxml::parse_non_destructive>(&buffer[0]);
+
+            rapidxml::xml_node<>* root = doc.first_node("PatrolDevice");
+            if (!root) return false;
+
+            rapidxml::xml_node<>* items_node = root->first_node("Items");
+            if (!items_node) return false;
+
+            // Helper lambda to extract node values
+            auto get_node_value = [&](const char* name, auto& out_value) {
+                rapidxml::xml_node<>* node = items_node->first_node(name);
+                if (node) {
+                    std::stringstream ss(node->value());
+                    ss >> out_value;
+                }
+            };
+
+            get_node_value("Value", value);
+            get_node_value("ErrorCode", errorCode);
+
+            return true;
+        } catch (const std::exception&) {
+            return false;
+        }
+    }
+};
+
+/**
  * @brief 导航任务请求
  */
 class NavigationTaskRequest : public MessageBase {

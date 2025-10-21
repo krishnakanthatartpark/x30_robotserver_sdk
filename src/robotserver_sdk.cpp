@@ -238,6 +238,41 @@ public:
         }
     }
 
+    void request2_Motion_Control(int command, float value, MotionControlResultCallback callback){
+        try {
+            if (!isConnected()) {
+                return;
+            }
+
+            protocol::MotionControlRequest request;
+            request.timestamp = getCurrentTimestamp();
+
+            int16_t seqNum = generateSequenceNumber();
+            request.setSequenceNumber(seqNum);
+
+            request.command = command;
+            request.value = value;
+
+            {
+                std::lock_guard<std::mutex> lock(motion_control_result_callbacks_mutex_);
+                motion_control_result_callbacks_[seqNum] = std::move(callback);
+            }
+
+
+            network_model_->sendMessage(request);
+
+        } catch (const std::exception& e) {
+            std::cerr << "request2_Motion_Control: " << e.what() << std::endl;
+            MotionControlResult failResult;
+            return;
+        } catch (...) {
+            std::cerr << "request2_Motion_Control" << std::endl;
+            MotionControlResult failResult;
+            return;
+        }    
+
+    };
+
     // 添加基于回调的异步方法实现
     void request1003_StartNavTask(const std::vector<NavigationPoint>& points, NavigationResultCallback callback) {
         try {
@@ -477,6 +512,30 @@ public:
 
                 return;
             }
+            else if(msgType == protocol::MessageType::MOTION_CONTROL_RESP){
+                MotionControlResultCallback callback;
+                {
+                    std::lock_guard<std::mutex> lock(motion_control_result_callbacks_mutex_);
+                    auto it = motion_control_result_callbacks_.find(seqNum);
+                    if (it != motion_control_result_callbacks_.end()) {
+                        callback = it->second;
+                        motion_control_result_callbacks_.erase(it);
+                    }
+                }
+
+                if (callback) {
+                    auto* resp = dynamic_cast<protocol::MotionControlResponse*>(message.get());
+                    if (resp) {
+                        MotionControlResult result;
+                        result.value = resp->value;
+                        result.errorCode = static_cast<ErrorCode_MotionControl>(resp->errorCode);
+                        safeCallback(callback, "Motion Control Result", result);
+                    }
+                }
+
+                return;
+
+            }
 
             // 处理其他类型的响应消息
             std::lock_guard<std::mutex> lock(pending_requests_mutex_);
@@ -540,6 +599,10 @@ private:
     // TODO: 没有超时清理
     std::mutex navigation_result_callbacks_mutex_;
     std::map<uint16_t, NavigationResultCallback> navigation_result_callbacks_;
+
+    std::mutex motion_control_result_callbacks_mutex_;
+    std::map<uint16_t, MotionControlResultCallback> motion_control_result_callbacks_;
+
 };
 
 // RobotServerSdk类的实现
@@ -563,6 +626,10 @@ bool RobotServerSdk::isConnected() const {
 
 RealTimeStatus RobotServerSdk::request1002_RunTimeState() {
     return impl_->request1002_RunTimeState();
+}
+
+void RobotServerSdk::request2_Motion_Control(int command, float value, MotionControlResultCallback callback){
+    impl_->request2_Motion_Control(command, value, std::move(callback));
 }
 
 // 添加基于回调的异步方法实现

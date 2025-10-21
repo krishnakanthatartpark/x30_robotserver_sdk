@@ -102,6 +102,15 @@ enum class ErrorCode_RealTimeStatus {
 };
 
 /**
+ * @brief 2 实时状态查询错误码枚举
+ */
+enum class ErrorCode_MotionControl {
+    SUCCESS = 0,            ///< 操作成功
+    Fail = 1,
+    UNKNOWN_ERROR = 2
+};
+
+/**
  * @brief 导航点信息
  */
 struct NavigationPoint {
@@ -176,10 +185,17 @@ struct RealTimeStatus {
 /**
  * @brief 1003 导航任务结果
  */
-struct NavigationResult {
+struct 
+NavigationResult {
     int value = 0;                                                  ///< 导航任务目标点编号，与下发导航任务请求对应
     ErrorCode_Navigation errorCode = ErrorCode_Navigation::SUCCESS; ///< 错误码 0:成功; 1:失败; 2:取消
     ErrorStatus_Navigation errorStatus = ErrorStatus_Navigation::DEFAULT;                 ///< 错误状态码; 导航任务失败的具体原因
+};
+
+struct 
+MotionControlResult {
+    int value = 0;                                                  ///< 导航任务目标点编号，与下发导航任务请求对应
+    ErrorCode_MotionControl errorCode = ErrorCode_MotionControl::SUCCESS; ///< 错误码 0:成功; 1:失败; 2:取消
 };
 
 /**
@@ -203,5 +219,6 @@ struct SdkOptions {
  * @brief 导航任务结果回调函数类型
  */
 using NavigationResultCallback = std::function<void(const NavigationResult&)>;
+using MotionControlResultCallback = std::function<void(const MotionControlResult&)>;
 
 } // namespace robotserver_sdk

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>x30_robotserver_sdk</name>
+  <version>0.1.0</version>
+  <description>RobotDog RobotServer SDK ROS 2 wrapper</description>
+  <maintainer email="krishnakanth@artpark.in">Your Name</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+</package>

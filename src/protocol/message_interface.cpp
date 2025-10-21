@@ -9,6 +9,10 @@ std::unique_ptr<IMessage> createMessage(MessageType type) {
             return std::make_unique<GetRealTimeStatusRequest>();
         case MessageType::GET_REAL_TIME_STATUS_RESP:
             return std::make_unique<GetRealTimeStatusResponse>();
+        case MessageType::MOTION_CONTROL_REQ:
+            return std::make_unique<MotionControlRequest>();
+        case MessageType::MOTION_CONTROL_RESP:
+            return std::make_unique<MotionControlResponse>();
         case MessageType::NAVIGATION_TASK_REQ:
             return std::make_unique<NavigationTaskRequest>();
         case MessageType::NAVIGATION_TASK_RESP:
