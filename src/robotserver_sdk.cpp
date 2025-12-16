@@ -478,8 +478,6 @@ public:
     // 实现网络回调接口
     void onMessageReceived(std::unique_ptr<protocol::IMessage> message) override {
         try {
-            std::cout << "收到消息，类型: " << static_cast<int>(message->getType())
-                      << "，序列号: " << message->getSequenceNumber() << std::endl;
             if (!message) {
                 return;
             }
