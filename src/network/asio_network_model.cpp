@@ -219,11 +219,13 @@ void safeCallback(const Callback& callback, const std::string& callbackType, Arg
 }
 
 void AsioNetworkModel::onReceive(const boost::system::error_code& error, std::size_t bytes_transferred) {
+    std::cout << "Entered text callback" << std::endl;
     if (error) {
         if (error != boost::asio::error::operation_aborted) {
             std::cerr << "接收数据错误: " << error.message() << std::endl;
             disconnect();
         }
+        std::cout << "return here 1" << std::endl;
         return;
     }
 
@@ -231,6 +233,12 @@ void AsioNetworkModel::onReceive(const boost::system::error_code& error, std::si
     receive_data_.append(receive_buffer_.data(), bytes_transferred);
 
     // 尝试解析消息
+    std::cout << "[RAW HEX] ";
+    for (unsigned char c : receive_data_) {
+        printf("%02X ", c);
+    }
+    std::cout << std::endl;
+
     protocol::Serializer serializer;
     auto message = serializer.deserializeMessage(receive_data_);
     if (message) {
@@ -248,10 +256,77 @@ void AsioNetworkModel::onReceive(const boost::system::error_code& error, std::si
             );
         });
     }
+    else{
+        std::cout << "Failed to deserialize message" << std::endl;
+
+    }
 
     // 继续接收
     startReceive();
 }
+
+// void AsioNetworkModel::onReceive(const boost::system::error_code& error, std::size_t bytes_transferred) {
+//     std::cout << "Entered text callback" << std::endl;
+//     if (error) {
+//         if (error != boost::asio::error::operation_aborted) {
+//             std::cerr << "接收数据错误: " << error.message() << std::endl;
+//             disconnect();
+//         }
+//         std::cout << "return here 1" << std::endl;
+//         return;
+//     }
+
+//     // Append received data to buffer
+//     receive_data_.append(receive_buffer_.data(), bytes_transferred);
+
+//     // --- Print full raw bytes in HEX ---
+//     // std::cout << "[RAW HEX] ";
+//     // for (unsigned char c : receive_data_) {
+//     //     printf("%02X ", c);
+//     // }
+//     // std::cout << std::endl;
+
+//     // --- Print header info and raw XML payload ---
+//     if (receive_data_.size() > 16) {
+//         // First 16 bytes = header, rest = XML payload
+//         std::string header = receive_data_.substr(0, 16);
+//         std::string xml_payload = receive_data_.substr(16);
+
+//         // Parse header fields
+//         uint16_t length = (unsigned char)header[4] | ((unsigned char)header[5] << 8);
+//         uint16_t msg_id = (unsigned char)header[6] | ((unsigned char)header[7] << 8);
+
+//         std::cout << "[HEADER INFO] Length: " << length << ", Msg ID: " << msg_id << std::endl;
+//         std::cout << "[XML PAYLOAD]\n" << xml_payload << std::endl;
+//     } else {
+//         std::cout << "[WARN] Received data smaller than header size (16 bytes)." << std::endl;
+//     }
+
+//     // --- Try to parse message normally ---
+//     protocol::Serializer serializer;
+//     auto message = serializer.deserializeMessage(receive_data_);
+//     if (message) {
+//         receive_data_.clear();
+
+//         // Post callback safely
+//         boost::asio::post(strand_, [this, msg = std::move(message)]() mutable {
+//             safeCallback(
+//                 [this](std::unique_ptr<protocol::IMessage>& msg) {
+//                     callback_.onMessageReceived(std::move(msg));
+//                 },
+//                 "网络消息接收",
+//                 msg
+//             );
+//         });
+//     } else {
+//         std::cout << "Failed to deserialize message" << std::endl;
+//     }
+
+//     // Continue receiving next packet
+//     startReceive();
+// }
+
+
 
 void AsioNetworkModel::onSend(const boost::system::error_code& error, std::size_t) {
     if (error) {
